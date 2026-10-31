@@ -1,0 +1,22 @@
+[package]
+name = "calmig-core"
+version = "0.1.0-beta.1"
+edition = "2021"
+license = "MIT"
+publish = false
+
+[features]
+test-support = []
+
+[dependencies]
+base64 = "0.22"
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "rustls-tls", "gzip"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["arbitrary_precision"] }
+thiserror = "2"
+hmac = "0.12"
+sha2 = "0.10"
+uuid = { version = "1", features = ["v4"] }
+chrono = { version = "0.4", default-features = false, features = ["std"] }
+regex = "1"
+cookie = "0.18"

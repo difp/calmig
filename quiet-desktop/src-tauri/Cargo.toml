@@ -6,6 +6,12 @@ edition = "2021"
 [dependencies]
 tauri = { version = "2" }
 serde_json = "1"
+chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
+calmig-core = { path = "../../rust-core" }
+serde_yaml = "0.9"
 
 [build-dependencies]
 tauri-build = { version = "2" }
+
+[dev-dependencies]
+calmig-core = { path = "../../rust-core", features = ["test-support"] }

@@ -11,12 +11,13 @@ const i18nScript = fs.readFileSync(
 );
 const tick = () => new Promise(resolve => setTimeout(resolve, 30));
 function setup({
-	verification = false,
 	reason = '',
 	restored = false,
 	photos,
 	commentFailure = false,
 	unchangedStatus = false,
+	nativeDisconnect = false,
+	calendarFeedback = false,
 	language,
 } = {}) {
 	const dom = new JSDOM(html, {
@@ -44,7 +45,9 @@ function setup({
 					command === 'clear_instagram_login'
 				) {
 					calls.push({action: command});
-					return null;
+					return command === 'clear_instagram_login' && nativeDisconnect
+						? {nativeDisconnected: true}
+						: null;
 				}
 				if (command === 'complete_instagram_login') {
 					calls.push({action: command});
@@ -53,16 +56,9 @@ function setup({
 				const {request} = payload;
 				calls.push(request);
 				switch (request.action) {
-					case 'login':
-						return reason
-							? {connected: false, reason}
-							: verification
-								? {verification: true}
-								: {connected: true, username: request.username};
-					case 'code':
-						return {connected: true, username: 'sample.user'};
-					case 'cancel-login':
-						return {cancelled: true};
+					case 'restore':
+						if (reason) throw Error('restore failed');
+						return {connected: true, username: request.username};
 					case 'calendar-start':
 						return {started: true};
 					case 'photo-details':
@@ -97,9 +93,10 @@ function setup({
 							return {unchanged: true, revision: 1};
 						return {
 							revision: unchangedStatus ? 1 : undefined,
-							status: 'complete',
+							status: calendarFeedback ? 'error' : 'complete',
+							reason: calendarFeedback ? 'feedback_required' : undefined,
 							accounts: 1,
-							incomplete: false,
+							incomplete: calendarFeedback,
 							photos: photos ?? [
 								{
 									id: 'one',
@@ -153,6 +150,42 @@ test('restores a saved browser login on startup', async () => {
 		);
 	} finally {
 		dom.window.close();
+	}
+});
+test('native logout does not start the legacy adapter', async () => {
+	const {dom, window, calls} = setup({restored: true, nativeDisconnect: true});
+	try {
+		await tick();
+		window.document.querySelector('#disconnect').click();
+		await tick();
+		assert(calls.some(call => call.action === 'clear_instagram_login'));
+		assert(!calls.some(call => call.action === 'disconnect'));
+		assert.equal(window.document.querySelector('#login').open, true);
+	} finally {
+		dom.window.close();
+	}
+});
+test('explains a feedback restriction in Russian and English without asking for notifications', async () => {
+	for (const [language, expected] of [
+		['ru', 'Instagram отклонил запрос приложения.'],
+		['en', 'Instagram rejected the app’s request.'],
+	]) {
+		const {dom, window} = setup({
+			restored: true,
+			calendarFeedback: true,
+			language,
+		});
+		try {
+			await tick();
+			const status =
+				window.document.querySelector('#calendar-status').textContent;
+			assert(status.includes(expected));
+			assert(
+				!status.includes(language === 'ru' ? 'уведомлен' : 'notifications'),
+			);
+		} finally {
+			dom.window.close();
+		}
 	}
 });
 test('switches languages and preserves user-generated text', async () => {
@@ -424,13 +457,12 @@ test('loads a caption and author comments for a previously cached photo', async 
 		dom.window.close();
 	}
 });
-test('a failed login remains on the form and displays a safe reason', async () => {
+test('a failed session restore remains on the form', async () => {
 	const {dom, window} = setup({reason: 'network'});
 	try {
 		const doc = window.document;
 		doc.querySelector('#manual-open').click();
 		doc.querySelector('#username').value = 'sample.user';
-		doc.querySelector('#password').value = 'test-password';
 		const form = doc.querySelector('#login-form');
 		form.dispatchEvent(
 			new window.SubmitEvent('submit', {
@@ -441,21 +473,18 @@ test('a failed login remains on the form and displays a safe reason', async () =
 		);
 		await tick();
 		assert.equal(doc.querySelector('#login').open, true);
-		assert.equal(doc.querySelector('#password').value, '');
-		assert.match(doc.querySelector('#login-status').textContent, /сеть/i);
-		assert(!doc.body.textContent.includes('test-password'));
+		assert.match(doc.querySelector('#login-status').textContent, /сесси/i);
 	} finally {
 		dom.window.close();
 	}
 });
-test('login opens seven-day photo grid and message sending uses the chosen dialog', async () => {
+test('session restore opens the photo grid and messaging', async () => {
 	const {dom, window, calls} = setup();
 	try {
 		const doc = window.document;
 		doc.querySelector('#manual-open').click();
 		assert.equal(doc.querySelectorAll('.day').length, 7);
 		doc.querySelector('#username').value = 'sample.user';
-		doc.querySelector('#password').value = 'test-password';
 		const form = doc.querySelector('#login-form');
 		form.dispatchEvent(
 			new window.SubmitEvent('submit', {
@@ -465,7 +494,6 @@ test('login opens seven-day photo grid and message sending uses the chosen dialo
 			}),
 		);
 		await tick();
-		assert.equal(doc.querySelector('#password').value, '');
 		assert.equal(doc.querySelectorAll('.tile').length, 1);
 		assert.equal(doc.querySelectorAll('.nav svg').length, 3);
 		doc.querySelector('[data-view=messages]').click();
@@ -498,32 +526,6 @@ test('login opens seven-day photo grid and message sending uses the chosen dialo
 			),
 		);
 		assert.match(doc.querySelector('#chat').textContent, /Отправлено/);
-	} finally {
-		dom.window.close();
-	}
-});
-
-test('verification can be cancelled and returns to the login form', async () => {
-	const {dom, window, calls} = setup({verification: true});
-	try {
-		const doc = window.document;
-		doc.querySelector('#manual-open').click();
-		doc.querySelector('#username').value = 'sample.user';
-		doc.querySelector('#password').value = 'test-password';
-		const form = doc.querySelector('#login-form');
-		form.dispatchEvent(
-			new window.SubmitEvent('submit', {
-				bubbles: true,
-				cancelable: true,
-				submitter: form.querySelector('[type=submit]'),
-			}),
-		);
-		await tick();
-		assert.equal(doc.querySelector('#code-form').hidden, false);
-		doc.querySelector('#back-login').click();
-		await tick();
-		assert.equal(form.hidden, false);
-		assert(calls.some(call => call.action === 'cancel-login'));
 	} finally {
 		dom.window.close();
 	}

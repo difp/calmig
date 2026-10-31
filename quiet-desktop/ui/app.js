@@ -133,22 +133,6 @@ function showError(
 ) {
 	target.textContent = text;
 }
-function showLoginFailure(target, reason) {
-	const messages = {
-		rate_limited: tr('Instagram ограничил частоту запросов. Попробуйте позже.'),
-		network: tr(
-			'Не удалось связаться с Instagram. Проверьте сеть и настройки прокси.',
-		),
-		checkpoint: tr(
-			'Instagram просит подтвердить вход. Проверьте уведомления в официальном приложении.',
-		),
-		unavailable: tr(
-			'Не удалось подготовить вход. Способ авторизации мог измениться.',
-		),
-		rejected: tr('Instagram отклонил вход. Проверьте данные и уведомления.'),
-	};
-	showError(target, messages[reason] || tr('Не удалось выполнить вход.'));
-}
 $('#browser-open').addEventListener('click', async event => {
 	const button = event.currentTarget;
 	button.disabled = true;
@@ -193,7 +177,6 @@ $('#manual-open').addEventListener('click', () => {
 	$('#username').focus();
 });
 $('#manual-back').addEventListener('click', () => {
-	$('#password').value = '';
 	$('#login-form').hidden = true;
 	$('#browser-step').hidden = false;
 	$('#browser-open').focus();
@@ -201,65 +184,6 @@ $('#manual-back').addEventListener('click', () => {
 $('#login-form').addEventListener('submit', async event => {
 	event.preventDefault();
 	const button = event.submitter;
-	button.disabled = true;
-	$('#login-status').textContent = tr('Входим…');
-	const password = $('#password').value;
-	$('#password').value = '';
-	try {
-		const result = await call('login', {
-			username: $('#username').value.trim(),
-			password,
-		});
-		if (result.verification) {
-			$('#login-form').hidden = true;
-			$('#code-form').hidden = false;
-			$('#code').focus();
-		} else if (result.connected) setConnected(result.username);
-		else showLoginFailure($('#login-status'), result.reason);
-	} catch {
-		showError(
-			$('#login-status'),
-			tr('Не удалось войти. Проверьте данные и уведомления Instagram.'),
-		);
-	} finally {
-		button.disabled = false;
-	}
-});
-$('#code-form').addEventListener('submit', async event => {
-	event.preventDefault();
-	const button = event.submitter;
-	button.disabled = true;
-	$('#back-login').disabled = true;
-	$('#code-status').textContent = tr('Проверяем…');
-	const code = $('#code').value;
-	$('#code').value = '';
-	try {
-		const result = await call('code', {code});
-		if (result.verification)
-			showError($('#code-status'), tr('Нужен другой код подтверждения.'));
-		else if (result.connected) setConnected(result.username);
-		else showLoginFailure($('#code-status'), result.reason);
-	} catch {
-		showError(
-			$('#code-status'),
-			tr('Не удалось подтвердить вход. Проверьте уведомления Instagram.'),
-		);
-	} finally {
-		button.disabled = false;
-		$('#back-login').disabled = false;
-	}
-});
-$('#back-login').addEventListener('click', async () => {
-	try {
-		await call('cancel-login');
-	} catch {}
-	$('#code-form').hidden = true;
-	$('#login-form').hidden = false;
-	$('#login-status').textContent = '';
-	$('#username').focus();
-});
-$('#restore').addEventListener('click', async event => {
-	const button = event.currentTarget;
 	button.disabled = true;
 	$('#login-status').textContent = tr('Подключаем…');
 	try {
@@ -274,10 +198,11 @@ $('#restore').addEventListener('click', async event => {
 	}
 });
 $('#disconnect').addEventListener('click', async event => {
-	event.currentTarget.disabled = true;
+	const button = event.currentTarget;
+	button.disabled = true;
 	try {
-		await invoke('clear_instagram_login');
-		await call('disconnect');
+		const cleared = await invoke('clear_instagram_login');
+		if (!cleared?.nativeDisconnected) await call('disconnect');
 		connected = false;
 		syncing = false;
 		clearTimeout(timer);
@@ -292,7 +217,6 @@ $('#disconnect').addEventListener('click', async event => {
 		$('#clear-cache').hidden = true;
 		$('#login-form').reset();
 		$('#login-form').hidden = true;
-		$('#code-form').hidden = true;
 		$('#browser-step').hidden = false;
 		$('#browser-complete').hidden = true;
 		$('#browser-status').textContent = '';
@@ -300,7 +224,7 @@ $('#disconnect').addEventListener('click', async event => {
 	} catch {
 		showError($('#profile-name'));
 	} finally {
-		event.currentTarget.disabled = false;
+		button.disabled = false;
 	}
 });
 function dayKey(date) {
@@ -703,7 +627,12 @@ async function pollCalendar() {
 			complete:
 				tr('Загрузка завершена. Проверено подписок: ') + state.accounts + '.',
 			cancelled: tr('Загрузка остановлена.'),
-			error: tr('Загрузка прервалась. Проверьте уведомления Instagram.'),
+			error:
+				state.reason === 'feedback_required'
+					? tr(
+							'Instagram отклонил запрос приложения. Доступ может быть временно ограничен; попробуйте позже.',
+						)
+					: tr('Загрузка прервалась. Проверьте уведомления Instagram.'),
 		}[state.status];
 		$('#calendar-status').textContent =
 			status +
@@ -723,7 +652,8 @@ async function pollCalendar() {
 }
 $('#refresh').addEventListener('click', () => void refreshCalendar());
 $('#clear-cache').addEventListener('click', async event => {
-	event.currentTarget.disabled = true;
+	const button = event.currentTarget;
+	button.disabled = true;
 	try {
 		await call('calendar-clear');
 		clearTimeout(timer);
@@ -736,7 +666,7 @@ $('#clear-cache').addEventListener('click', async event => {
 	} catch {
 		showError($('#calendar-status'), tr('Не удалось удалить кеш.'));
 	} finally {
-		event.currentTarget.disabled = false;
+		button.disabled = false;
 	}
 });
 async function loadThreads(more = false) {

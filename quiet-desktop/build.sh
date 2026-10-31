@@ -3,12 +3,8 @@ set -eu
 app_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 project_dir=$(CDPATH= cd -- "$app_dir/.." && pwd)
 cd "$project_dir"
-mkdir -p dist
-bridge_tmp=$(mktemp "$project_dir/dist/.quiet-bridge.XXXXXX.mjs")
 binary_tmp=$(mktemp "$app_dir/.tikho.XXXXXX")
-trap 'rm -f "$bridge_tmp" "$binary_tmp"' EXIT HUP INT TERM
-./node_modules/.bin/esbuild source/quiet/bridge.ts --bundle --platform=node --format=esm --packages=external --outfile="$bridge_tmp"
-mv -f "$bridge_tmp" dist/quiet-bridge.js
+trap 'rm -f "$binary_tmp"' EXIT HUP INT TERM
 if [ "${CALMIG_CARGO_OFFLINE:-0}" = 1 ]; then
   cargo build --manifest-path quiet-desktop/src-tauri/Cargo.toml --offline
 else

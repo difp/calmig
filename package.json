@@ -1,65 +1,14 @@
 {
-	"name": "calmig",
-	"version": "0.1.0-beta.1",
-	"private": true,
-	"description": "A quiet photo and messaging client for Instagram",
-	"license": "MIT",
-	"repository": {
-		"type": "git",
-		"url": "git+https://github.com/difp/calmig.git"
-	},
-	"type": "module",
-	"engines": {
-		"node": ">=22"
-	},
-	"scripts": {
-		"build": "tsc --noEmit && ./quiet-desktop/build.sh",
-		"start": "./quiet-desktop/start.sh",
-		"format": "prettier --write . && prettier --ignore-path .prettierignore --write \"quiet-desktop/ui/*.js\"",
-		"lint-check": "prettier --check . && prettier --ignore-path .prettierignore --check 'quiet-desktop/ui/*.js' && xo --ignore 'quiet-desktop/ui/**' --ignore 'quiet-desktop/tests/**'",
-		"test": "prettier --check . && prettier --ignore-path .prettierignore --check 'quiet-desktop/ui/*.js' && xo --ignore 'quiet-desktop/ui/**' --ignore 'quiet-desktop/tests/**' && ava --serial && node quiet-desktop/tests/ui.test.cjs",
-		"postinstall": "patch-package"
-	},
-	"dependencies": {
-		"debug": "^4.4.3",
-		"fuse.js": "^7.1.0",
-		"instagram-private-api": "^1.46.1",
-		"instagram_mqtt": "^1.2.3",
-		"js-yaml": "^4.1.0",
-		"patch-package": "^8.0.1",
-		"proxy-from-env": "^1.1.0"
-	},
-	"devDependencies": {
-		"@sindresorhus/tsconfig": "^8.1.0",
-		"@types/debug": "^4.1.12",
-		"@types/js-yaml": "^4.0.9",
-		"@types/proxy-from-env": "^1.0.4",
-		"@vdemedes/prettier-config": "^2.0.1",
-		"ava": "^7.0.0",
-		"esbuild": "^0.28.0",
-		"jsdom": "^26.1.0",
-		"prettier": "^3.3.3",
-		"ts-node": "^10.9.2",
-		"typescript": "^5.0.3",
-		"xo": "^2.0.1",
-		"@types/node": "^25.0.9"
-	},
-	"ava": {
-		"files": [
-			"tests/**"
-		],
-		"extensions": {
-			"ts": "module",
-			"tsx": "module"
-		},
-		"nodeArguments": [
-			"--loader=ts-node/esm"
-		]
-	},
-	"prettier": "@vdemedes/prettier-config",
-	"overrides": {
-		"form-data": "^4.0.0",
-		"qs": "^6.14.1",
-		"tough-cookie": "^5.1.0"
-	}
+  "name": "calmig-ui-tests",
+  "version": "0.1.0-beta.1",
+  "private": true,
+  "license": "MIT",
+  "description": "Development-only tests for the CalmIG web interface",
+  "scripts": {
+    "test": "node --test quiet-desktop/tests/ui.test.cjs",
+    "build": "./quiet-desktop/build.sh"
+  },
+  "devDependencies": {
+    "jsdom": "^26.1.0"
+  }
 }

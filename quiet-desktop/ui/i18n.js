@@ -22,9 +22,9 @@
 			'Open the official page, sign in, and return to CalmIG. The app uses a local session to access photos and messages.',
 		'Открыть Instagram': 'Open Instagram',
 		'Я вошёл': 'I have signed in',
-		'Другой способ': 'Other sign-in method',
-		'Вход выполняется через неофициальный клиент instagram-cli. Сессия сохраняется в локальном файле.':
-			'Sign-in uses the unofficial instagram-cli client. Your session is stored locally.',
+		'Восстановить сессию': 'Restore session',
+		'Введите имя пользователя для восстановления совместимой локальной сессии.':
+			'Enter your username to restore a compatible local session.',
 		'Имя пользователя': 'Username',
 		Пароль: 'Password',
 		Войти: 'Sign in',
@@ -46,6 +46,8 @@
 			'Request failed. Check your Instagram notifications.',
 		'Instagram ограничил частоту запросов. Попробуйте позже.':
 			'Instagram has limited requests. Try again later.',
+		'Instagram отклонил запрос приложения. Доступ может быть временно ограничен; попробуйте позже.':
+			'Instagram rejected the app’s request. Access may be temporarily limited; try again later.',
 		'Не удалось связаться с Instagram. Проверьте сеть и настройки прокси.':
 			'Could not reach Instagram. Check your network and proxy settings.',
 		'Instagram просит подтвердить вход. Проверьте уведомления в официальном приложении.':

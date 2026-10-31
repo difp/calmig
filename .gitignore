@@ -22,3 +22,8 @@ coverage
 **/cookies.sqlite*
 **/web-login/
 **/tikho-*.json
+*.har
+__pycache__/
+
+# Rust core build artifacts
+/rust-core/target/

@@ -90,48 +90,27 @@
 					Я вошёл
 				</button>
 				<button id="manual-open" class="outline" type="button">
-					Другой способ
+					Использовать сохранённую сессию
 				</button>
 			</section>
 			<form id="login-form" hidden>
-				<h2>Войти в Instagram</h2>
+				<h2>Восстановить сессию</h2>
 				<p class="muted">
-					Вход выполняется через неофициальный клиент instagram-cli. Сессия
-					сохраняется в локальном файле.
+					Введите имя пользователя для восстановления совместимой локальной
+					сессии.
 				</p>
 				<label
 					>Имя пользователя<input
 						id="username"
 						autocomplete="username"
 						maxlength="30"
-						required /></label
-				><label
-					>Пароль<input
-						id="password"
-						type="password"
-						autocomplete="current-password"
-						maxlength="1024"
 						required
 				/></label>
 				<p id="login-status" role="status" class="muted"></p>
-				<button class="primary" type="submit">Войти</button
-				><button id="restore" class="outline" type="button">
+				<button id="restore" class="primary" type="submit">
 					Использовать сохранённую сессию
 				</button>
 				<button id="manual-back" class="outline" type="button">Назад</button>
-			</form>
-			<form id="code-form" hidden>
-				<h2>Подтверждение</h2>
-				<label
-					>Код<input
-						id="code"
-						inputmode="numeric"
-						autocomplete="one-time-code"
-						required
-				/></label>
-				<p id="code-status" role="status" class="muted"></p>
-				<button class="primary">Продолжить</button>
-				<button id="back-login" type="button" class="outline">Назад</button>
 			</form>
 		</dialog>
 		<dialog id="photo">
