@@ -1,6 +1,12 @@
 import {Buffer} from 'node:buffer';
+import http from 'node:http';
 import http2 from 'node:http2';
+import https from 'node:https';
+import {Socket} from 'node:net';
+import type {Duplex} from 'node:stream';
+import tls from 'node:tls';
 import zlib from 'node:zlib';
+import {getProxyForUrl} from 'proxy-from-env';
 
 /**
  * Minimal HTTP/2 client for the CAA login requests.
@@ -48,9 +54,62 @@ function decode(raw: Uint8Array, encoding: unknown): string {
 	return Buffer.from(raw).toString('utf8');
 }
 
+/** The CONNECT request contains no Instagram credentials; payloads use validated TLS. */
+async function connectProxy(proxyValue: string, target: URL): Promise<Duplex> {
+	let proxy: URL;
+	try {
+		proxy = new URL(proxyValue);
+	} catch {
+		throw new Error('Invalid proxy configuration');
+	}
+
+	if (proxy.protocol !== 'http:' && proxy.protocol !== 'https:') {
+		throw new Error('Unsupported proxy protocol');
+	}
+
+	const host = target.hostname;
+	const port = target.port || '443';
+	const authorization =
+		proxy.username || proxy.password
+			? `Basic ${Buffer.from(`${decodeURIComponent(proxy.username)}:${decodeURIComponent(proxy.password)}`).toString('base64')}`
+			: undefined;
+	return new Promise((resolve, reject) => {
+		const request = (proxy.protocol === 'https:' ? https : http).request({
+			hostname: proxy.hostname.replaceAll(/^\[|]$/g, ''),
+			port: proxy.port || (proxy.protocol === 'https:' ? 443 : 80),
+			method: 'CONNECT',
+			path: `${host}:${port}`,
+			headers: {
+				Host: `${host}:${port}`,
+				...(authorization ? {'Proxy-Authorization': authorization} : {}),
+			},
+		});
+		request.setTimeout(15_000, () => {
+			request.destroy(new Error('Proxy connection timed out'));
+		});
+		request.once('error', () => {
+			reject(new Error('Proxy connection failed'));
+		});
+		request.once('connect', (response, socket, head) => {
+			if (response.statusCode !== 200) {
+				socket.destroy();
+				reject(new Error('Proxy connection rejected'));
+				return;
+			}
+
+			if (socket instanceof Socket) socket.setTimeout(0);
+			if (head.length > 0) socket.unshift(head);
+			resolve(socket);
+		});
+		request.end();
+	});
+}
+
 export class CaaTransport {
 	private readonly origin: string;
 	private session: http2.ClientHttp2Session | undefined;
+	private connection: Promise<http2.ClientHttp2Session> | undefined;
+	private generation = 0;
 
 	constructor(host: string) {
 		this.origin = `https://${host}`;
@@ -61,7 +120,7 @@ export class CaaTransport {
 		form: Record<string, string>,
 		headers: Record<string, string>,
 	): Promise<CaaResponse> {
-		const session = this.connect();
+		const session = await this.connect();
 		const body = new URLSearchParams(form).toString();
 		return new Promise((resolve, reject) => {
 			const stream = session.request({
@@ -105,16 +164,32 @@ export class CaaTransport {
 	}
 
 	close(): void {
+		this.generation++;
 		this.session?.close();
 		this.session = undefined;
+		this.connection = undefined;
 	}
 
-	private connect(): http2.ClientHttp2Session {
+	private async connect(): Promise<http2.ClientHttp2Session> {
 		if (this.session && !this.session.closed && !this.session.destroyed) {
 			return this.session;
 		}
 
-		const session = http2.connect(this.origin, {
+		if (this.connection) return this.connection;
+		const {generation} = this;
+		const connection = this.openConnection(generation);
+		this.connection = connection;
+		try {
+			return await connection;
+		} finally {
+			if (this.connection === connection) this.connection = undefined;
+		}
+	}
+
+	private async openConnection(
+		generation: number,
+	): Promise<http2.ClientHttp2Session> {
+		const tlsOptions: tls.ConnectionOptions = {
 			ALPNProtocols: ['h2'],
 			minVersion: 'TLSv1.3',
 			maxVersion: 'TLSv1.3',
@@ -123,6 +198,28 @@ export class CaaTransport {
 			sigalgs:
 				'ecdsa_secp256r1_sha256:ecdsa_secp384r1_sha384:rsa_pss_rsae_sha256',
 			secureOptions: noLegacyExtensions,
+		};
+		const proxy = getProxyForUrl(this.origin);
+		const socket = proxy
+			? await connectProxy(proxy, new URL(this.origin))
+			: undefined;
+		if (generation !== this.generation) {
+			socket?.destroy();
+			throw new Error('Connection closed');
+		}
+
+		const session = http2.connect(this.origin, {
+			...tlsOptions,
+			...(socket
+				? {
+						createConnection: () =>
+							tls.connect({
+								...tlsOptions,
+								socket,
+								servername: new URL(this.origin).hostname,
+							}),
+					}
+				: {}),
 			settings: {
 				headerTableSize: 65_536,
 				enablePush: false,

@@ -222,7 +222,7 @@ export class InstagramClient extends EventEmitter {
 	public async login(
 		username: string,
 		password: string,
-		options?: {initializeRealtime: boolean},
+		options?: {initializeRealtime: boolean; initializeFeed?: boolean},
 	): Promise<LoginResult> {
 		const loginOptions = options ?? {initializeRealtime: true};
 		try {
@@ -264,7 +264,10 @@ export class InstagramClient extends EventEmitter {
 	 * Completes a login that returned `verificationMessage` (two-factor or
 	 * security code challenge) by submitting the code the user received.
 	 */
-	public async submitLoginCode(code: string): Promise<LoginResult> {
+	public async submitLoginCode(
+		code: string,
+		options?: {initializeFeed?: boolean},
+	): Promise<LoginResult> {
 		if (!this.username || !this.caaLogin) {
 			return {success: false, error: 'No login in progress'};
 		}
@@ -273,6 +276,7 @@ export class InstagramClient extends EventEmitter {
 			const outcome = await this.caaLogin.submitCode(code);
 			return await this.handleCaaOutcome(outcome, this.username, {
 				initializeRealtime: false,
+				initializeFeed: options?.initializeFeed,
 			});
 		} catch (error) {
 			this.logger.error('Verification code login failed', error);
@@ -310,6 +314,7 @@ export class InstagramClient extends EventEmitter {
 
 	public async loginBySession(options?: {
 		initializeRealtime: boolean;
+		initializeFeed?: boolean;
 	}): Promise<LoginResult> {
 		// No need to perform preLoginFlow here as session login does not require it
 		// This is not verified just a guess based on the purpose of preLoginFlow...
@@ -339,6 +344,7 @@ export class InstagramClient extends EventEmitter {
 
 			await this.postLoginSetup(this.username, {
 				initializeRealtime: sessionOptions.initializeRealtime,
+				initializeFeed: sessionOptions.initializeFeed,
 			});
 			return {success: true, username: this.username ?? undefined};
 		} catch (error) {
@@ -1084,7 +1090,7 @@ export class InstagramClient extends EventEmitter {
 		});
 
 		this.realtime.on('message', (wrapper: any) => {
-			this.logger.debug(`Received MQTT "message": ${JSON.stringify(wrapper)}`);
+			this.logger.debug('Received MQTT message');
 			// Handle reaction events
 			if (
 				wrapper.delta_type === 'deltaCreateReaction' &&
@@ -1095,9 +1101,7 @@ export class InstagramClient extends EventEmitter {
 				if (reactionData) {
 					this.emit('reaction', reactionData);
 				} else {
-					this.logger.warn(
-						`Failed to parse realtime reaction event: ${JSON.stringify(wrapper)}`,
-					);
+					this.logger.warn('Failed to parse realtime reaction event');
 				}
 			} else if (wrapper.delta_type === 'deltaNewMessage') {
 				// Handle regular message events
@@ -1302,7 +1306,7 @@ export class InstagramClient extends EventEmitter {
 	private async handleCaaOutcome(
 		outcome: CaaLoginOutcome,
 		username: string,
-		options: {initializeRealtime: boolean},
+		options: {initializeRealtime: boolean; initializeFeed?: boolean},
 	): Promise<LoginResult> {
 		switch (outcome.status) {
 			case 'success': {
@@ -1325,10 +1329,11 @@ export class InstagramClient extends EventEmitter {
 		username: string,
 		options: {
 			initializeRealtime?: boolean;
+			initializeFeed?: boolean;
 		},
 	): Promise<void> {
 		const originalUsername = username;
-		const {initializeRealtime = true} = options;
+		const {initializeRealtime = true, initializeFeed = true} = options;
 
 		await this.saveSessionState();
 
@@ -1360,7 +1365,7 @@ export class InstagramClient extends EventEmitter {
 				}
 			})(),
 			(async () => {
-				if (!this.loginFlowStates.postLoginDone) {
+				if (initializeFeed && !this.loginFlowStates.postLoginDone) {
 					await this.postLoginFlow();
 					// Continue even if postLoginFlow fails
 					this.loginFlowStates.postLoginDone = true;

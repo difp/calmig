@@ -1,0 +1,5 @@
+/tikho
+/src-tauri/target/
+/src-tauri/gen/
+!/ui/app.js
+!/ui/i18n.js

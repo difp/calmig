@@ -112,22 +112,31 @@ export class SessionManager {
 	}
 
 	private getSessionPath(): string {
-		if (!this.username) {
-			throw new Error('Username is not set');
-		}
+		const username = this.validateUsername();
 
 		const usersDirectory = this.configManager.get('advanced.usersDir');
-		return path.join(usersDirectory, this.username, 'session.ts.json');
+		return path.join(usersDirectory, username, 'session.ts.json');
 	}
 
 	private async ensureSessionDir(): Promise<string> {
-		if (!this.username) {
-			throw new Error('Username is not set');
-		}
+		const username = this.validateUsername();
 
 		const usersDirectory = this.configManager.get('advanced.usersDir');
-		const sessionDirectory = path.join(usersDirectory, this.username);
+		const sessionDirectory = path.join(usersDirectory, username);
 		await fs.mkdir(sessionDirectory, {recursive: true, mode: 0o700});
 		return sessionDirectory;
+	}
+
+	private validateUsername(): string {
+		if (
+			!this.username ||
+			this.username === '.' ||
+			this.username === '..' ||
+			/[\\/\0]/.test(this.username)
+		) {
+			throw new Error('Invalid username');
+		}
+
+		return this.username;
 	}
 }

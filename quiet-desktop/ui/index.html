@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="ru">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>CalmIG</title>
+		<link rel="stylesheet" href="styles.css" />
+		<script src="i18n.js" defer></script>
+		<script src="app.js" defer></script>
+	</head>
+	<body>
+		<div class="app">
+			<nav aria-label="Основная навигация">
+				<div class="brand" role="img" aria-label="CalmIG">CalmIG</div>
+				<button class="nav active" data-view="calendar">
+					<span class="icon" aria-hidden="true">⁙</span><span>7 дней</span>
+				</button>
+				<button class="nav" data-view="messages">
+					<span class="icon" aria-hidden="true">⁘</span><span>Сообщения</span>
+				</button>
+				<button class="nav" data-view="profile">
+					<span class="icon" aria-hidden="true">⁖</span><span>Профиль</span>
+				</button>
+				<small><span>На основе instagram-cli</span> · v0.1.0-beta.1</small>
+			</nav>
+			<main>
+				<section id="calendar" class="view">
+					<header>
+						<h1>Последние 7 дней</h1>
+						<button id="refresh" class="outline">Обновить</button>
+					</header>
+					<p class="muted">Только фотографии подписок, по дате публикации.</p>
+					<p id="calendar-status" role="status" class="muted"></p>
+					<div id="days"></div>
+				</section>
+				<section id="messages" class="view" hidden>
+					<header>
+						<h1>Сообщения</h1>
+						<button id="refresh-messages" class="outline">Обновить</button>
+					</header>
+					<p id="message-status" role="status" class="muted"></p>
+					<div class="messenger">
+						<div id="threads" class="threads"></div>
+						<div id="chat" class="chat">
+							<p class="muted">Выберите переписку</p>
+						</div>
+					</div>
+				</section>
+				<section id="profile" class="view" hidden>
+					<header><h1>Профиль</h1></header>
+					<label
+						><span>Язык</span
+						><select class="language-select" aria-label="Язык">
+							<option value="ru">Русский</option>
+							<option value="en">English</option>
+						</select></label
+					>
+					<p id="profile-name">Аккаунт не подключён.</p>
+					<p class="muted">
+						Приложение использует неофициальный доступ. Сессия сохраняется
+						локально в файле.
+					</p>
+					<button id="clear-cache" class="outline" hidden>Очистить кеш</button>
+					<button id="disconnect" class="outline" hidden>
+						Выйти и удалить сессию
+					</button>
+				</section>
+			</main>
+		</div>
+		<dialog id="login">
+			<label
+				><span>Язык</span
+				><select class="language-select" aria-label="Язык">
+					<option value="ru">Русский</option>
+					<option value="en">English</option>
+				</select></label
+			>
+			<section id="browser-step">
+				<h2>Войти в Instagram</h2>
+				<p class="muted">
+					Откройте официальную страницу, войдите в аккаунт и вернитесь в CalmIG.
+					Приложение использует локальную сессию для доступа к фотографиям и
+					перепискам.
+				</p>
+				<p id="browser-status" role="status" class="muted"></p>
+				<button id="browser-open" class="primary" type="button">
+					Открыть Instagram
+				</button>
+				<button id="browser-complete" class="outline" type="button" hidden>
+					Я вошёл
+				</button>
+				<button id="manual-open" class="outline" type="button">
+					Другой способ
+				</button>
+			</section>
+			<form id="login-form" hidden>
+				<h2>Войти в Instagram</h2>
+				<p class="muted">
+					Вход выполняется через неофициальный клиент instagram-cli. Сессия
+					сохраняется в локальном файле.
+				</p>
+				<label
+					>Имя пользователя<input
+						id="username"
+						autocomplete="username"
+						maxlength="30"
+						required /></label
+				><label
+					>Пароль<input
+						id="password"
+						type="password"
+						autocomplete="current-password"
+						maxlength="1024"
+						required
+				/></label>
+				<p id="login-status" role="status" class="muted"></p>
+				<button class="primary" type="submit">Войти</button
+				><button id="restore" class="outline" type="button">
+					Использовать сохранённую сессию
+				</button>
+				<button id="manual-back" class="outline" type="button">Назад</button>
+			</form>
+			<form id="code-form" hidden>
+				<h2>Подтверждение</h2>
+				<label
+					>Код<input
+						id="code"
+						inputmode="numeric"
+						autocomplete="one-time-code"
+						required
+				/></label>
+				<p id="code-status" role="status" class="muted"></p>
+				<button class="primary">Продолжить</button>
+				<button id="back-login" type="button" class="outline">Назад</button>
+			</form>
+		</dialog>
+		<dialog id="photo">
+			<div class="photo-top">
+				<button
+					id="photo-author"
+					type="button"
+					class="photo-author"
+					title="Открыть профиль"
+				></button
+				><button id="photo-profile" type="button" class="outline">
+					Открыть профиль</button
+				><button id="close-photo" class="outline">Закрыть</button>
+			</div>
+			<img id="photo-image" alt="" />
+			<div class="photo-controls">
+				<button id="prev" class="outline" aria-label="Предыдущая фотография">
+					←</button
+				><span id="photo-count"></span
+				><button id="next" class="outline" aria-label="Следующая фотография">
+					→
+				</button>
+			</div>
+			<p id="photo-caption" class="photo-caption" hidden></p>
+			<section class="photo-discussion" aria-label="Комментарии">
+				<h3>Комментарии</h3>
+				<form id="photo-comment-form" class="photo-comment-form">
+					<label for="photo-comment-input">Ваш комментарий</label>
+					<textarea
+						id="photo-comment-input"
+						maxlength="1800"
+						rows="2"
+						required
+					></textarea>
+					<button id="photo-comment-send" type="submit" class="outline">
+						Отправить
+					</button>
+					<p id="photo-comment-feedback" class="muted" role="status"></p>
+				</form>
+				<p id="photo-comments-status" class="muted" role="status"></p>
+				<div id="photo-comments"></div>
+				<button id="photo-comments-more" type="button" class="outline" hidden>
+					Ещё комментарии
+				</button>
+			</section>
+		</dialog>
+		<dialog id="author-profile">
+			<div class="photo-top">
+				<h2 id="author-profile-name"></h2>
+				<button id="close-author-profile" type="button" class="outline">
+					Закрыть
+				</button>
+			</div>
+			<p id="author-profile-fullname"></p>
+			<p id="author-profile-bio" class="photo-caption"></p>
+			<p id="author-profile-status" class="muted" role="status"></p>
+			<div id="author-profile-grid" class="grid"></div>
+			<button id="author-profile-more" type="button" class="outline" hidden>
+				Показать ещё
+			</button>
+		</dialog>
+	</body>
+</html>

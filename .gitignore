@@ -13,3 +13,12 @@ coverage
 
 *.DS_Store
 .worktrees/
+
+# Local credentials, sessions and caches must never be published.
+.env.*
+!.env.example
+.instagram-cli/
+**/session.ts.json
+**/cookies.sqlite*
+**/web-login/
+**/tikho-*.json

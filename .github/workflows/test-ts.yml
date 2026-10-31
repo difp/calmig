@@ -1,40 +1,37 @@
-name: Typescript Preflight
+name: CalmIG checks
 
-# Only triggers on changes to the TypeScript codebase
 on:
   push:
-    branches:
-      - main
-    paths:
-      ['**/*.md', 'source/**', 'tests/**', 'package.json', 'package-lock.json']
   pull_request:
-    branches:
-      - main
-    paths:
-      ['**/*.md', 'source/**', 'tests/**', 'package.json', 'package-lock.json']
+
+permissions:
+  contents: read
 
 jobs:
-  test:
-    name: Lint and Test
+  linux:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version: ['22', '23']
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
-          cache: 'npm'
-
-      - name: Install dependencies
+          node-version: '22'
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - name: Install Tauri dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential libssl-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+      - name: Install Node dependencies
         run: npm ci
-
-      - name: Build
+      - name: Check TypeScript and build CLI
         run: npm run build
-
-      - name: Run lint and test
-        run: npm run test
+      - name: Check code and run tests
+        run: npm test
+      - name: Check Rust formatting
+        run: cargo fmt --manifest-path quiet-desktop/src-tauri/Cargo.toml -- --check
+      - name: Build desktop application
+        run: ./quiet-desktop/build.sh
+      - name: Check local bridge
+        run: node quiet-desktop/tests/bridge.test.cjs

@@ -2,7 +2,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import process from 'node:process';
-import nodeUtil from 'node:util';
 import debugModule from 'debug';
 import {ConfigManager} from '../config.js';
 
@@ -131,8 +130,7 @@ class Logger {
 	}
 
 	/**
-	 * Installs a hook to redirect debug library output to the log file.
-	 * This ensures that API logs from instagram-private-api are captured.
+	 * Redirects API diagnostics without recording potentially private payloads.
 	 */
 	private installDebugHook(): void {
 		if (this.debugHookInstalled) {
@@ -140,17 +138,13 @@ class Logger {
 		}
 
 		try {
-			// Override the debug library's log function to write to our log file
-			// instead of stderr. This captures all debug output including ig:* namespaces
-			debugModule.log = (...args: any[]) => {
-				this.debug(
-					nodeUtil.formatWithOptions(
-						// @ts-expect-error Monkey patching
-						debugModule.inspectOpts,
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-						...args,
-					) + '\n',
-				);
+			// Keep debug output off stderr and record only a single safe notice.
+			let apiDiagnosticsReported = false;
+			debugModule.log = () => {
+				if (!apiDiagnosticsReported) {
+					apiDiagnosticsReported = true;
+					this.debug('API diagnostics hidden to protect private data');
+				}
 			};
 
 			// Enable debug output for instagram API if DEBUG env var is set

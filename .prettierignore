@@ -5,3 +5,5 @@ build
 instagram-py/
 .yalc/
 .tsimp/
+quiet-desktop/src-tauri/gen/
+quiet-desktop/src-tauri/target/
