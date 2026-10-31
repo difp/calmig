@@ -10,7 +10,7 @@ The screenshots use demonstration data, not a real account. See the [messages vi
 
 ## Current status
 
-- Linux desktop development build; no packaged installer yet.
+- Linux desktop development build with a per-user application launcher; no packaged installer or Android APK yet.
 - Photos and photo-only carousels, chronological seven-day calendar, profiles, captions and comments.
 - Direct messages and sending comments. Instagram may require verification, limit requests or change its API.
 - Fetching photos currently checks followed profiles individually. The first synchronization can be slow or incomplete; the app reports errors and incomplete results.
@@ -26,6 +26,16 @@ Prerequisites: Rust, Cargo, and [Tauri v2 Linux prerequisites](https://v2.tauri.
 ```
 
 The build produces a local development executable at `quiet-desktop/tikho`. The development build is not a standalone release package. For an existing Cargo cache, set `CALMIG_CARGO_OFFLINE=1` when running the build script.
+
+### Add CalmIG to the applications menu
+
+After building, install the executable, icon, and desktop entry for the current user:
+
+```sh
+./quiet-desktop/install.sh
+```
+
+Find **CalmIG** in the applications menu. The launcher uses the installed copy, so run the install script again after rebuilding. By default, it installs `~/.local/bin/calmig`, `~/.local/share/applications/calmig.desktop`, and `~/.local/share/icons/hicolor/64x64/apps/calmig.png`. `XDG_BIN_HOME` and `XDG_DATA_HOME` can change the installation locations. To remove the launcher and executable, delete those three files; doing so does not remove your session or cache.
 
 The built-in browser opens Instagram's sign-in page. After sign-in, the Rust client uses a session to access the account through an unofficial API. Do not publish session files, cookies, tokens, logs containing private data, or personal screenshots. Use the account's **Sign out** action to remove the app's session and cache.
 
@@ -46,6 +56,8 @@ These tests use fixtures and mocks; they do not confirm live Instagram behavior 
 CalmIG — экспериментальный настольный клиент для фотографий подписок и переписок. Лента заменена календарём за семь дней: фотографии показаны по датам и авторам, видео и смешанные карусели исключены. Язык интерфейса можно переключить до входа и в профиле.
 
 Для сборки в Linux установите Rust и системные зависимости Tauri v2, затем выполните команды из раздела **Build and run on Linux**. Node.js 22 и npm нужны только для тестов интерфейса. Вход выполняется через окно Instagram; совместимую старую сессию можно восстановить по имени пользователя. Приложение использует неофициальный доступ к Instagram; первая синхронизация может быть долгой или неполной. Сессии и кеш хранятся локально — не добавляйте их в публичный репозиторий.
+
+Чтобы добавить CalmIG в список приложений, после сборки выполните `./quiet-desktop/install.sh`. После пересборки повторите установку, чтобы обновить запускаемую копию. Пути установки и удаления указаны в разделе **Add CalmIG to the applications menu**.
 
 ## Credits and license
 
