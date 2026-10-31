@@ -49,4 +49,4 @@ CalmIG — экспериментальный настольный клиент 
 
 ## Credits and license
 
-CalmIG is a fork of [instagram-cli](https://github.com/supreme-gg-gg/instagram-cli), originally by Jet Chiang and James Zheng. Their [MIT license](LICENSE) is retained. The upstream documentation is available in [README.upstream.md](README.upstream.md).
+CalmIG is a fork of [instagram-cli](https://github.com/supreme-gg-gg/instagram-cli), originally by Jet Chiang and James Zheng. Their [MIT license](LICENSE) is retained.

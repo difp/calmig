@@ -1,98 +1,48 @@
 {
-	"name": "@i7m/instagram-cli",
-	"description": "The unofficial CLI and terminal client for Instagram",
-	"version": "2.1.0",
+	"name": "calmig",
+	"version": "0.1.0-beta.1",
+	"private": true,
+	"description": "A quiet photo and messaging client for Instagram",
 	"license": "MIT",
 	"repository": {
-		"url": "git+https://github.com/supreme-gg-gg/instagram-cli.git"
-	},
-	"keywords": [
-		"instagram",
-		"cli",
-		"terminal",
-		"tui",
-		"ink",
-		"typescript",
-		"react",
-		"productivity",
-		"instagram-api",
-		"command-line",
-		"messenger",
-		"terminal-ui",
-		"brainrot"
-	],
-	"bin": {
-		"instagram-cli": "dist/cli.js"
+		"type": "git",
+		"url": "git+https://github.com/difp/calmig.git"
 	},
 	"type": "module",
 	"engines": {
 		"node": ">=22"
 	},
 	"scripts": {
-		"format": "prettier --write .",
-		"build": "tsc --noEmit && node esbuild.config.mjs --production",
-		"clean": "rm -rf dist",
-		"lint-check": "prettier --check . && prettier --ignore-path .prettierignore --check 'quiet-desktop/ui/*.js' && xo --ignore esbuild.config.mjs --ignore 'quiet-desktop/ui/**' --ignore 'quiet-desktop/tests/**'",
-		"prepare": "husky",
-		"dev": "node esbuild.config.mjs",
-		"dev:watch": "node esbuild.config.mjs --watch",
-		"start": "node dist/cli.js",
-		"start:mock": "node dist/mocks/cli.mock.js",
-		"test": "prettier --check . && prettier --ignore-path .prettierignore --check 'quiet-desktop/ui/*.js' && xo --ignore esbuild.config.mjs --ignore 'quiet-desktop/ui/**' --ignore 'quiet-desktop/tests/**' && ava --serial && node quiet-desktop/tests/ui.test.cjs",
+		"build": "tsc --noEmit && ./quiet-desktop/build.sh",
+		"start": "./quiet-desktop/start.sh",
+		"format": "prettier --write . && prettier --ignore-path .prettierignore --write \"quiet-desktop/ui/*.js\"",
+		"lint-check": "prettier --check . && prettier --ignore-path .prettierignore --check 'quiet-desktop/ui/*.js' && xo --ignore 'quiet-desktop/ui/**' --ignore 'quiet-desktop/tests/**'",
+		"test": "prettier --check . && prettier --ignore-path .prettierignore --check 'quiet-desktop/ui/*.js' && xo --ignore 'quiet-desktop/ui/**' --ignore 'quiet-desktop/tests/**' && ava --serial && node quiet-desktop/tests/ui.test.cjs",
 		"postinstall": "patch-package"
 	},
-	"files": [
-		"dist",
-		"patches"
-	],
 	"dependencies": {
-		"@inkjs/ui": "^2.0.0",
 		"debug": "^4.4.3",
-		"emoji-name-map": "^2.0.3",
-		"file-type": "^22.0.1",
 		"fuse.js": "^7.1.0",
-		"ink": "^7.0.0",
-		"ink-big-text": "^2.0.0",
-		"ink-gradient": "^3.0.0",
-		"ink-picture": "^2.1.0",
-		"ink-testing-library": "^4.0.0",
-		"instagram_mqtt": "^1.2.3",
 		"instagram-private-api": "^1.46.1",
+		"instagram_mqtt": "^1.2.3",
 		"js-yaml": "^4.1.0",
-		"meow": "^14.0.0",
-		"node-notifier": "^10.0.1",
-		"open": "^11.0.0",
-		"pastel": "^4.0.0",
 		"patch-package": "^8.0.1",
-		"proxy-from-env": "^1.1.0",
-		"react": "^19.2.0",
-		"read-package-up": "^12.0.0",
-		"string-width": "^8.2.0",
-		"unicode-emoji-json": "^0.9.0",
-		"wrap-ansi": "^10.0.0",
-		"zod": "^4.1.0"
+		"proxy-from-env": "^1.1.0"
 	},
 	"devDependencies": {
 		"@sindresorhus/tsconfig": "^8.1.0",
 		"@types/debug": "^4.1.12",
 		"@types/js-yaml": "^4.0.9",
-		"@types/node-notifier": "^8.0.5",
 		"@types/proxy-from-env": "^1.0.4",
-		"@types/react": "^19.2.0",
 		"@vdemedes/prettier-config": "^2.0.1",
 		"ava": "^7.0.0",
-		"chalk": "^5.2.0",
 		"esbuild": "^0.28.0",
-		"eslint-config-xo-react": "^0.29.0",
-		"eslint-plugin-react": "^7.37.5",
-		"eslint-plugin-react-hooks": "^7.0.1",
-		"husky": "^9.1.7",
 		"jsdom": "^26.1.0",
-		"lint-staged": "^16.2.7",
 		"prettier": "^3.3.3",
 		"ts-node": "^10.9.2",
 		"typescript": "^5.0.3",
-		"xo": "^2.0.1"
+		"xo": "^2.0.1",
+		"@types/node": "^25.0.9"
 	},
 	"ava": {
 		"files": [
@@ -107,14 +57,9 @@
 		]
 	},
 	"prettier": "@vdemedes/prettier-config",
-	"lint-staged": {
-		"!(instagram-py)/**/*.{ts,tsx,js,jsx,json,md}": "prettier --write",
-		"!(instagram-py)/**/*.{ts,tsx}": "xo --ignore esbuild.config.mjs"
-	},
 	"overrides": {
 		"form-data": "^4.0.0",
 		"qs": "^6.14.1",
 		"tough-cookie": "^5.1.0"
-	},
-	"private": true
+	}
 }
