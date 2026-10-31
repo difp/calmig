@@ -10,6 +10,10 @@ chrono = { version = "0.4", default-features = false, features = ["std", "clock"
 calmig-core = { path = "../../rust-core" }
 serde_yaml = "0.9"
 
+[target.'cfg(target_os = "linux")'.dependencies]
+webkit2gtk = { version = "2", features = ["v2_40"] }
+javascriptcore-rs = "1.1"
+
 [build-dependencies]
 tauri-build = { version = "2" }
 

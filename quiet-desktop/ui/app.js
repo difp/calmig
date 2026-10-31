@@ -129,7 +129,7 @@ function setConnected(username) {
 }
 function showError(
 	target,
-	text = tr('Не удалось выполнить запрос. Проверьте уведомления Instagram.'),
+	text = tr('Не удалось выполнить запрос. Попробуйте позже.'),
 ) {
 	target.textContent = text;
 }
@@ -623,16 +623,16 @@ async function pollCalendar() {
 		renderDays();
 		const status = {
 			loading:
-				tr('Загружаем фотографии. Проверено подписок: ') + state.accounts + '.',
+				tr(state.source === 'following' ? 'Загружаем фотографии. Найдено авторов: ' : 'Загружаем фотографии. Проверено подписок: ') + state.accounts + '.',
 			complete:
-				tr('Загрузка завершена. Проверено подписок: ') + state.accounts + '.',
+				tr(state.source === 'following' ? 'Загрузка завершена. Найдено авторов: ' : 'Загрузка завершена. Проверено подписок: ') + state.accounts + '.',
 			cancelled: tr('Загрузка остановлена.'),
 			error:
 				state.reason === 'feedback_required'
 					? tr(
 							'Instagram отклонил запрос приложения. Доступ может быть временно ограничен; попробуйте позже.',
 						)
-					: tr('Загрузка прервалась. Проверьте уведомления Instagram.'),
+					: tr('Не удалось загрузить все фотографии. Попробуйте позже.'),
 		}[state.status];
 		$('#calendar-status').textContent =
 			status +

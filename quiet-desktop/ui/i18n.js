@@ -44,6 +44,8 @@
 		'Показать ещё': 'Show more',
 		'Не удалось выполнить запрос. Проверьте уведомления Instagram.':
 			'Request failed. Check your Instagram notifications.',
+		'Не удалось выполнить запрос. Попробуйте позже.':
+			'Request failed. Try again later.',
 		'Instagram ограничил частоту запросов. Попробуйте позже.':
 			'Instagram has limited requests. Try again later.',
 		'Instagram отклонил запрос приложения. Доступ может быть временно ограничен; попробуйте позже.':
@@ -101,8 +103,14 @@
 		Остановить: 'Stop',
 		'Загружаем фотографии. Проверено подписок: ':
 			'Loading photos. Accounts checked: ',
+		'Загружаем фотографии. Найдено авторов: ':
+			'Loading photos. Authors found: ',
 		'Загрузка завершена. Проверено подписок: ':
 			'Loading complete. Accounts checked: ',
+		'Загрузка завершена. Найдено авторов: ':
+			'Loading complete. Authors found: ',
+		'Не удалось загрузить все фотографии. Попробуйте позже.':
+			'Could not load all photos. Try again later.',
 		'Загрузка остановлена.': 'Loading stopped.',
 		'Загрузка прервалась. Проверьте уведомления Instagram.':
 			'Loading stopped unexpectedly. Check Instagram notifications.',

@@ -83,6 +83,11 @@ struct ApiUser {
 }
 
 impl Client {
+    /// Account identifier for local session consistency checks. Do not log it.
+    pub fn account_id(&self) -> &str {
+        &self.session.user_id
+    }
+
     pub fn new(session: Session) -> Result<Self, Error> {
         Self::with_origin(session, Url::parse(ORIGIN).map_err(|_| Error::Network)?)
     }

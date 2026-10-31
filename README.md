@@ -13,7 +13,7 @@ The screenshots use demonstration data, not a real account. See the [messages vi
 - Linux desktop development build with a per-user application launcher; no packaged installer or Android APK yet.
 - Photos and photo-only carousels, chronological seven-day calendar, profiles, captions and comments.
 - Direct messages and sending comments. Instagram may require verification, limit requests or change its API.
-- Fetching photos currently checks followed profiles individually. The first synchronization can be slow or incomplete; the app reports errors and incomplete results.
+- On Linux, browser sign-in uses Instagram's Following page to collect photo posts. It loads at most 20 pages and stops on an error; results are always marked potentially incomplete and previously cached photos remain available. Compatible legacy sessions still check followed profiles individually.
 - The local cache contains recent post metadata, captions and image URLs; images are loaded from Instagram. Sign-in data remains on your device. Compatible legacy sessions can be restored from local files without system keyring encryption.
 
 ## Build and run on Linux

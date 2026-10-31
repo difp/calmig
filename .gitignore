@@ -6,6 +6,7 @@ dist
 
 *.tsbuildinfo
 *.js
+!quiet-desktop/src-tauri/src/web/*.js
 .next
 build
 coverage

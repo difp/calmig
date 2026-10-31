@@ -1,4 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+#[cfg(target_os = "linux")]
+mod following_webview;
 #[cfg(test)]
 use calmig_core::Session as RustSession;
 use calmig_core::{Account as RustAccount, Client as RustClient};
@@ -69,6 +71,7 @@ struct UiCalendar {
     accounts: usize,
     incomplete: bool,
     feedback_required: bool,
+    following_mode: bool,
     cached: bool,
     revision: u64,
     job_id: Option<u64>,
@@ -321,6 +324,7 @@ impl RustAdapter {
             accounts: 0,
             incomplete: true,
             feedback_required: false,
+            following_mode: false,
             revision: 1,
             job_id: None,
             job_revision: 0,
@@ -413,6 +417,87 @@ impl RustAdapter {
         }
     }
 
+    #[cfg(target_os = "linux")]
+    fn prepare_web_calendar(&self) -> Result<(Arc<CalendarJob>, String, i64, i64), ()> {
+        let (cutoff, now) = calendar_bounds()?;
+        let (job, account_id) = {
+            let mut state = self.inner.lock().map_err(|_| ())?;
+            if state.auth_busy {
+                return Err(());
+            }
+            let account_id = state.client.as_ref().ok_or(())?.account_id().to_owned();
+            if state.calendar_view.as_ref().ok_or(())?.status == "loading" {
+                return Err(());
+            }
+            state.calendar_epoch = state.calendar_epoch.wrapping_add(1);
+            if let Some(previous) = state.calendar.take() {
+                previous.cancelled.store(true, Ordering::Relaxed);
+            }
+            state.next_calendar_id = state.next_calendar_id.checked_add(1).ok_or(())?;
+            let job = Arc::new(CalendarJob {
+                id: state.next_calendar_id,
+                cancelled: AtomicBool::new(false),
+                state: Mutex::new((0, None)),
+            });
+            state.calendar = Some(Arc::clone(&job));
+            let view = state.calendar_view.as_mut().ok_or(())?;
+            view.previous = view.photos.clone();
+            view.cached = !view.previous.is_empty();
+            view.status = "loading";
+            view.accounts = 0;
+            view.incomplete = true;
+            view.feedback_required = false;
+            view.following_mode = true;
+            view.revision = view.revision.saturating_add(1);
+            view.job_revision = 0;
+            view.job_id = Some(job.id);
+            (job, account_id)
+        };
+        Ok((job, account_id, cutoff, now))
+    }
+
+    #[cfg(target_os = "linux")]
+    fn start_web_calendar(&self, window: WebviewWindow) -> Result<Value, ()> {
+        if window.is_visible().map_err(|_| ())? {
+            return Err(());
+        }
+        let (job, account_id, cutoff, now) = self.prepare_web_calendar()?;
+        std::thread::spawn(move || {
+            let url = "https://www.instagram.com/?variant=following".parse();
+            if url.ok().is_none_or(|url| window.navigate(url).is_err()) {
+                if let Ok(mut state) = job.state.lock() {
+                    state.0 = state.0.saturating_add(1);
+                    state.1 = Some(calmig_core::CalendarState {
+                        status: calmig_core::CalendarStatus::Error,
+                        accounts: 0,
+                        photos: Vec::new(),
+                        incomplete: true,
+                        feedback_required: false,
+                    });
+                }
+                return;
+            }
+            let source = following_webview::BrowserFollowingSource {
+                window,
+                job: Arc::clone(&job),
+                account_id,
+            };
+            calmig_core::sync_following_calendar(
+                &source,
+                cutoff.div_euclid(1000),
+                now.div_euclid(1000),
+                &job.cancelled,
+                |value| {
+                    if let Ok(mut state) = job.state.lock() {
+                        state.0 = state.0.saturating_add(1);
+                        state.1 = Some(value);
+                    }
+                },
+            );
+        });
+        Ok(json!({"started":true}))
+    }
+
     fn calendar_request(&self, request: &Value) -> Result<Value, ()> {
         let action = request.get("action").and_then(Value::as_str).ok_or(())?;
         match action {
@@ -436,6 +521,7 @@ impl RustAdapter {
                     view.accounts = 0;
                     view.incomplete = false;
                     view.feedback_required = false;
+                    view.following_mode = false;
                     view.revision = view.revision.saturating_add(1);
                     view.job_revision = 0;
                     view.job_id = None;
@@ -589,7 +675,7 @@ impl RustAdapter {
                     return Ok(json!({"unchanged":true,"revision":view.revision}));
                 }
                 Ok(
-                    json!({"status":view.status,"accounts":view.accounts,"photos":view.photos,"incomplete":view.incomplete,"cached":view.cached,"revision":view.revision,"reason":if view.feedback_required {Some("feedback_required")} else {None::<&str>}}),
+                    json!({"status":view.status,"accounts":view.accounts,"photos":view.photos,"incomplete":view.incomplete,"cached":view.cached,"revision":view.revision,"source":if view.following_mode {"following"} else {"profiles"},"reason":if view.feedback_required {Some("feedback_required")} else {None::<&str>}}),
                 )
             }
             _ => Err(()),
@@ -1524,6 +1610,18 @@ async fn bridge(
     } else {
         None
     };
+    #[cfg(target_os = "linux")]
+    if action == Some("calendar-start") {
+        if let Some(browser) = app.get_webview_window("instagram-login") {
+            let native = Arc::clone(&rust);
+            return tauri::async_runtime::spawn_blocking(move || {
+                native.start_web_calendar(browser)
+            })
+            .await
+            .map_err(|_| "Не удалось начать загрузку".to_owned())?
+            .map_err(|_| "Не удалось начать загрузку".into());
+        }
+    }
     if matches!(
         action,
         Some("calendar-start" | "calendar-status" | "calendar-stop" | "calendar-clear")
@@ -2266,6 +2364,66 @@ mod tests {
             .is_err());
         server.join().unwrap();
         adapter.clear().unwrap();
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn browser_calendar_preserves_cache_and_marks_results_incomplete() {
+        use std::sync::Arc;
+        let cookies = json!({"cookies":[{"key":"sessionid","value":"123456%3Asynthetic","domain":"instagram.com","path":"/","secure":true},{"key":"ds_user_id","value":"123456","domain":"instagram.com","path":"/","secure":true},{"key":"csrftoken","value":"synthetic","domain":"instagram.com","path":"/","secure":true}]});
+        let session = json!({"cookies":cookies.to_string(),"deviceId":"android-test","uuid":"uuid","deviceString":"34/14; test","language":"en_US"});
+        let session =
+            calmig_core::Session::from_legacy_json(session.to_string().as_bytes()).unwrap();
+        let adapter = RustAdapter::default();
+        adapter.inner.lock().unwrap().client =
+            Some(Arc::new(calmig_core::Client::new(session).unwrap()));
+        let directory =
+            std::env::temp_dir().join(format!("calmig-following-ui-{}", std::process::id()));
+        adapter
+            .configure_calendar(0, "synthetic", directory.to_str().unwrap())
+            .unwrap();
+        let (_, now) = super::calendar_bounds().unwrap();
+        let cached = json!({"id":"CACHED","username":"friend","url":"https://www.instagram.com/p/CACHED/","images":["https://scontent.cdninstagram.com/a"],"thumbnail":"https://scontent.cdninstagram.com/a","publishedAt":chrono::DateTime::from_timestamp_millis(now).unwrap().to_rfc3339()});
+        adapter
+            .inner
+            .lock()
+            .unwrap()
+            .calendar_view
+            .as_mut()
+            .unwrap()
+            .photos
+            .push(cached);
+        let (job, account, _, _) = adapter.prepare_web_calendar().unwrap();
+        assert_eq!(account, "123456");
+        assert!(adapter.prepare_web_calendar().is_err());
+        let photo = calmig_core::PhotoPost {
+            code: "NEW".into(),
+            username: "friend".into(),
+            url: "https://www.instagram.com/p/NEW/".into(),
+            images: vec!["https://scontent.cdninstagram.com/b".into()],
+            thumbnail: "https://scontent.cdninstagram.com/b".into(),
+            published_at: now.div_euclid(1000),
+            caption: String::new(),
+        };
+        *job.state.lock().unwrap() = (
+            1,
+            Some(calmig_core::CalendarState {
+                status: calmig_core::CalendarStatus::Complete,
+                accounts: 1,
+                photos: vec![photo],
+                incomplete: true,
+                feedback_required: false,
+            }),
+        );
+        let result = adapter
+            .calendar_request(&json!({"action":"calendar-status"}))
+            .unwrap();
+        assert_eq!(result["source"], "following");
+        assert_eq!(result["incomplete"], true);
+        assert_eq!(result["cached"], true);
+        assert_eq!(result["photos"].as_array().unwrap().len(), 2);
+        adapter.clear().unwrap();
+        let _ = std::fs::remove_dir_all(directory);
     }
 
     #[test]
